@@ -183,6 +183,12 @@ You can also create only the subset parquet files from raw JSONL files or existi
 parquet_paths = thrember.create_parquet_features('/path/to/dataset/')
 ```
 
+To list the ordered feature columns stored in a subset parquet file:
+
+```
+feature_names = thrember.list_parquet_features('/path/to/dataset/train.parquet')
+```
+
 ## More Examples
 
 Check out the ```examples/``` directory for more example code!
