@@ -14,6 +14,7 @@ from .features import (
     StringExtractor,
 )
 from .model import (
+    create_parquet,
     create_parquet_features,
     get_feature_names,
     read_metadata,
@@ -47,6 +48,7 @@ __all__ = [
     "AuthenticodeSignature",
     "SectionInfo",
     "StringExtractor",
+    "create_parquet",
     "create_parquet_features",
     "get_feature_names",
     "read_metadata",
