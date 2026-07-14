@@ -598,6 +598,27 @@ def create_parquet_features(
     return parquet_paths
 
 
+def create_parquet(
+    data_dir: Path | str,
+    subsets: Sequence[str] = DATASET_SUBSETS,
+    output_dir: Path | str | None = None,
+    batch_size: int = PARQUET_BATCH_SIZE,
+    compression: str = "zstd",
+    use_vectorized: bool = True,
+) -> dict[str, Path]:
+    """
+    Alias for create_parquet_features().
+    """
+    return create_parquet_features(
+        data_dir,
+        subsets=subsets,
+        output_dir=output_dir,
+        batch_size=batch_size,
+        compression=compression,
+        use_vectorized=use_vectorized,
+    )
+
+
 def read_metadata_subset(data_path: Path, subset: str, pool: Pool) -> pl.DataFrame:
     """
     Read metadata for one raw-feature subset.
