@@ -17,6 +17,8 @@ from .features import PEFeatureExtractor
 
 FEATURE_NAMES_FILENAME = "feature_names.json"
 METADATA_FILENAME = "metadata.parquet"
+PARQUET_FEATURE_NAMES_KEY = b"thrember_feature_names"
+PARQUET_METADATA_COLUMNS_KEY = b"thrember_metadata_columns"
 DATASET_SUBSETS = ("train", "test", "challenge")
 PARQUET_BATCH_SIZE = 1024
 
@@ -457,10 +459,32 @@ def parquet_schema(feature_names: list[str], pa):
 
     fields.extend(pa.field(name, pa.float32()) for name in feature_names)
     metadata = {
-        b"thrember_feature_names": json.dumps(feature_names).encode("utf8"),
-        b"thrember_metadata_columns": json.dumps(ORDERED_COLUMNS).encode("utf8"),
+        PARQUET_FEATURE_NAMES_KEY: json.dumps(feature_names).encode("utf8"),
+        PARQUET_METADATA_COLUMNS_KEY: json.dumps(ORDERED_COLUMNS).encode("utf8"),
     }
     return pa.schema(fields, metadata=metadata)
+
+
+def list_parquet_features(parquet_path: Path | str) -> list[str]:
+    """
+    Return the ordered feature names stored in a thrember parquet file.
+    """
+    _, pq = import_pyarrow()
+    parquet_file = pq.ParquetFile(str(parquet_path))
+    schema = parquet_file.schema_arrow
+    metadata = schema.metadata or {}
+
+    feature_names_json = metadata.get(PARQUET_FEATURE_NAMES_KEY)
+    if feature_names_json is not None:
+        return list(json.loads(feature_names_json.decode("utf8")))
+
+    metadata_columns_json = metadata.get(PARQUET_METADATA_COLUMNS_KEY)
+    if metadata_columns_json is not None:
+        metadata_columns = set(json.loads(metadata_columns_json.decode("utf8")))
+    else:
+        metadata_columns = set(ORDERED_COLUMNS)
+
+    return [column for column in schema.names if column not in metadata_columns]
 
 
 def parquet_batch_to_table(metadata_records: list[dict], feature_matrix: np.ndarray, feature_names: list[str], schema, pa):
