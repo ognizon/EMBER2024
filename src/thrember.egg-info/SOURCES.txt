@@ -1,7 +1,11 @@
 LICENSE
 README.md
+ember_process.ipynb
+load_dataset.ipynb
 pyproject.toml
 setup.cfg
+.vscode/settings.json
+examples/Classifier_ROC_AUC.pdf
 examples/ember2024-notebook.ipynb
 examples/eval_lgbm.py
 examples/lgbm_config.json

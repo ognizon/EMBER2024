@@ -29,6 +29,14 @@ from signify.authenticode.signed_file import SignedPEFile
 from datetime import datetime
 
 
+def _sanitize_feature_name(name: str) -> str:
+    """
+    Normalize generated feature names so they are safe for model libraries and files.
+    """
+    normalized = re.sub(r"[^0-9A-Za-z]+", "_", name).strip("_").lower()
+    return normalized or "feature"
+
+
 class FeatureType(object):
     """
     Base class from which each feature type may inherit
@@ -52,6 +60,12 @@ class FeatureType(object):
         """Directly calculate the feature vector from the sample itself. This should only be implemented differently
         if there are significant speedups to be gained from combining the two functions."""
         return self.process_raw_features(self.raw_features(bytez, pe))
+
+    def feature_names(self) -> list[str]:
+        """
+        Return names matching the order of process_raw_features().
+        """
+        return [f"{self.name}_{i}" for i in range(self.dim)]
 
 
 class GeneralFileInfo(FeatureType):
@@ -99,6 +113,17 @@ class GeneralFileInfo(FeatureType):
             dtype=np.float32,
         )
 
+    def feature_names(self) -> list[str]:
+        return [
+            "general_size",
+            "general_entropy",
+            "general_is_pe",
+            "general_start_byte_0",
+            "general_start_byte_1",
+            "general_start_byte_2",
+            "general_start_byte_3",
+        ]
+
 
 class ByteHistogram(FeatureType):
     """
@@ -120,6 +145,9 @@ class ByteHistogram(FeatureType):
         sum = counts.sum()
         normalized = counts / sum
         return normalized
+
+    def feature_names(self) -> list[str]:
+        return [f"histogram_byte_{idx:03d}" for idx in range(256)]
 
 
 class ByteEntropyHistogram(FeatureType):
@@ -175,6 +203,13 @@ class ByteEntropyHistogram(FeatureType):
         sum = counts.sum()
         normalized = counts / sum
         return normalized
+
+    def feature_names(self) -> list[str]:
+        return [
+            f"byteentropy_entropybin_{entropy_bin}_bytebin_{byte_bin}"
+            for entropy_bin in range(16)
+            for byte_bin in range(16)
+        ]
 
 
 class StringExtractor(FeatureType):
@@ -350,6 +385,20 @@ class StringExtractor(FeatureType):
             ]
         ).astype(np.float32)
 
+    def feature_names(self) -> list[str]:
+        names = [
+            "strings_numstrings",
+            "strings_avlength",
+            "strings_printables",
+        ]
+        names.extend([f"strings_printabledist_{idx:02d}" for idx in range(96)])
+        names.append("strings_entropy")
+        names.extend(
+            f"strings_count_{idx:02d}_{_sanitize_feature_name(regex)}"
+            for regex, idx in sorted(self.regex_idxs.items(), key=lambda item: item[1])
+        )
+        return names
+
 
 class SectionInfo(FeatureType):
     """
@@ -473,6 +522,32 @@ class SectionInfo(FeatureType):
             ]
         ).astype(np.float32)
 
+    def feature_names(self) -> list[str]:
+        names = [
+            "section_num_sections",
+            "section_num_zero_size",
+            "section_num_empty_name",
+            "section_num_read_execute",
+            "section_num_write",
+            "section_max_entropy",
+            "section_min_entropy",
+            "section_max_size_ratio",
+            "section_min_size_ratio",
+            "section_max_vsize_ratio",
+            "section_min_vsize_ratio",
+        ]
+        names.extend([f"section_size_hash_{idx:02d}" for idx in range(50)])
+        names.extend([f"section_vsize_hash_{idx:02d}" for idx in range(50)])
+        names.extend([f"section_entropy_hash_{idx:02d}" for idx in range(50)])
+        names.extend([f"section_characteristics_hash_{idx:02d}" for idx in range(50)])
+        names.extend([f"section_entry_hash_{idx:02d}" for idx in range(10)])
+        names.extend([
+            "section_overlay_size",
+            "section_overlay_size_ratio",
+            "section_overlay_entropy",
+        ])
+        return names
+
 
 class ImportsInfo(FeatureType):
     """
@@ -524,6 +599,12 @@ class ImportsInfo(FeatureType):
         # Two separate elements: libraries (alone) and fully-qualified names of imported functions
         return np.hstack([lengths, libraries_hashed, imports_hashed]).astype(np.float32)
 
+    def feature_names(self) -> list[str]:
+        names = ["imports_num_imports", "imports_num_libraries"]
+        names.extend([f"imports_libraries_hash_{idx:03d}" for idx in range(256)])
+        names.extend([f"imports_functions_hash_{idx:04d}" for idx in range(1024)])
+        return names
+
 
 class ExportsInfo(FeatureType):
     """
@@ -557,6 +638,11 @@ class ExportsInfo(FeatureType):
 
         exports_hashed = FeatureHasher(128, input_type="string").transform([raw_obj]).toarray()[0]
         return np.hstack([np.array([len(exports_hashed)]), exports_hashed.astype(np.float32)])
+
+    def feature_names(self) -> list[str]:
+        names = ["exports_num_exports"]
+        names.extend([f"exports_hash_{idx:03d}" for idx in range(128)])
+        return names
 
 
 class HeaderFileInfo(FeatureType):
@@ -812,6 +898,50 @@ class HeaderFileInfo(FeatureType):
             ]
         ).astype(np.float32)
 
+    def feature_names(self) -> list[str]:
+        names = [
+            "header_coff_timestamp",
+            "header_coff_number_of_sections",
+            "header_coff_number_of_symbols",
+            "header_coff_sizeof_optional_header",
+            "header_coff_pointer_to_symbol_table",
+            "header_coff_machine",
+            "header_optional_subsystem",
+            "header_optional_major_image_version",
+            "header_optional_minor_image_version",
+            "header_optional_major_linker_version",
+            "header_optional_minor_linker_version",
+            "header_optional_major_operating_system_version",
+            "header_optional_minor_operating_system_version",
+            "header_optional_major_subsystem_version",
+            "header_optional_minor_subsystem_version",
+            "header_optional_sizeof_code",
+            "header_optional_sizeof_headers",
+            "header_optional_sizeof_image",
+            "header_optional_sizeof_initialized_data",
+            "header_optional_sizeof_uninitialized_data",
+            "header_optional_sizeof_stack_reserve",
+            "header_optional_sizeof_stack_commit",
+            "header_optional_sizeof_heap_reserve",
+            "header_optional_sizeof_heap_commit",
+            "header_optional_address_of_entrypoint",
+            "header_optional_base_of_code",
+            "header_optional_image_base",
+            "header_optional_section_alignment",
+            "header_optional_checksum",
+            "header_optional_number_of_rvas_and_sizes",
+        ]
+        names.extend(
+            f"header_coff_characteristic_{_sanitize_feature_name(characteristic)}"
+            for characteristic in self._image_characteristics
+        )
+        names.extend(
+            f"header_optional_dll_characteristic_{_sanitize_feature_name(characteristic)}"
+            for characteristic in self._dll_characteristics
+        )
+        names.extend(f"header_dos_{member}" for member in self._dos_members)
+        return names
+
 
 class DataDirectories(FeatureType):
     """
@@ -878,6 +1008,18 @@ class DataDirectories(FeatureType):
         features[-1] = raw_obj[0]["has_dynamic_relocs"]
         return features
 
+    def feature_names(self) -> list[str]:
+        names = []
+        for data_directory_name in self._name_order:
+            normalized_name = _sanitize_feature_name(data_directory_name)
+            names.append(f"datadirectories_{normalized_name}_size")
+            names.append(f"datadirectories_{normalized_name}_virtual_address")
+        names.extend([
+            "datadirectories_has_relocs",
+            "datadirectories_has_dynamic_relocs",
+        ])
+        return names
+
 
 class RichHeader(FeatureType):
     """
@@ -903,6 +1045,11 @@ class RichHeader(FeatureType):
         paired_values = [(str(raw_obj[i]), raw_obj[i + 1]) for i in range(0, len(raw_obj) - 1, 2)]
         paired_values_hashed = FeatureHasher(32, input_type="pair").transform([paired_values]).toarray()[0]
         return np.hstack([number_of_pairs, paired_values_hashed]).astype(np.float32)
+
+    def feature_names(self) -> list[str]:
+        names = ["richheader_num_pairs"]
+        names.extend([f"richheader_hash_{idx:02d}" for idx in range(32)])
+        return names
 
 
 class AuthenticodeSignature(FeatureType):
@@ -984,6 +1131,18 @@ class AuthenticodeSignature(FeatureType):
             raw_obj["signing_time_diff"],
         ]).astype(np.float32)
 
+    def feature_names(self) -> list[str]:
+        return [
+            "authenticode_num_certs",
+            "authenticode_self_signed",
+            "authenticode_empty_program_name",
+            "authenticode_no_countersigner",
+            "authenticode_parse_error",
+            "authenticode_chain_max_depth",
+            "authenticode_latest_signing_time",
+            "authenticode_signing_time_diff",
+        ]
+
 
 class PEFormatWarnings(FeatureType):
     """
@@ -1047,6 +1206,13 @@ class PEFormatWarnings(FeatureType):
         ids[self.dim-1] = len(raw_obj)
         return np.array(ids, dtype=np.float32)
 
+    def feature_names(self) -> list[str]:
+        names = [f"pefilewarnings_warning_{idx:02d}" for idx in range(self.dim)]
+        for warning, idx in self.warning_ids.items():
+            names[idx] = f"pefilewarnings_{idx:02d}_{_sanitize_feature_name(warning)}"
+        names[self.dim - 1] = "pefilewarnings_num_warnings"
+        return names
+
 
 class PEFeatureExtractor(object):
     """
@@ -1083,6 +1249,9 @@ class PEFeatureExtractor(object):
             self.features = [features[feature] for feature in feature_names]
 
         self.dim = sum([fe.dim for fe in self.features])
+        self.feature_names = [name for fe in self.features for name in fe.feature_names()]
+        if len(self.feature_names) != self.dim:
+            raise ValueError("Feature names do not match feature vector dimension")
 
     def raw_features(self, bytez: bytes):
         pe = None
