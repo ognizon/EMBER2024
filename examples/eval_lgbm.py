@@ -8,7 +8,7 @@ import thrember
 import numpy as np
 import lightgbm as lgb
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, roc_auc_score, auc, precision_recall_curve
+from sklearn.metrics import roc_curve, roc_auc_score, auc, precision_recall_curve, accuracy_score
 
 
 if __name__ == "__main__":
@@ -29,10 +29,16 @@ if __name__ == "__main__":
     # Compute ROC AUC and PR AUC for test set
     roc_auc = roc_auc_score(y_test, y_pred)
     precision, recall, _ = precision_recall_curve(y_test, y_pred)
+    
     pr_auc = auc(recall, precision)
     print("ROC AUC on test set: {}".format(roc_auc))
     print("PR AUC on test set: {}".format(pr_auc))
 
+    #compute accuracy
+    y_pred = (y_pred >= 0.5).astype(int)             # convert to 0/1
+
+    accuracy = accuracy_score(y_test, y_pred)
+    print("Accuracy on test set::", accuracy)
     # Compute and plot ROC curve
     fpr, tpr, thresholds = roc_curve(y_test, y_pred)
     plt.figure(figsize=(6, 6))
@@ -52,6 +58,9 @@ if __name__ == "__main__":
     print("Saved ROC curve plot to Classifier_ROC_AUC.pdf")
     print("TPR of test set at FPR 0.1: {}".format(tpr_at_fpr_01))
 
+
+  
+
     # Load the challenge set
     X_challenge, y_challenge = thrember.read_vectorized_features(args.data_dir, "challenge")
 
@@ -66,5 +75,13 @@ if __name__ == "__main__":
     roc_auc = roc_auc_score(y_challenge, y_pred)
     precision, recall, _ = precision_recall_curve(y_challenge, y_pred)
     pr_auc = auc(recall, precision)
+     #compute accuracy
+    y_pred = (y_pred >= 0.5).astype(int)             # convert to 0/1
+
+    accuracy = accuracy_score(y_challenge, y_pred)
+    print("Accuracy on challenge set:", accuracy)
+
     print("ROC AUC on challenge set: {}".format(roc_auc))
     print("PR AUC on challenge set: {}".format(pr_auc))
+
+   
