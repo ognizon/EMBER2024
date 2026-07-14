@@ -14,6 +14,8 @@ from .features import (
     StringExtractor,
 )
 from .model import (
+    create_parquet_features,
+    get_feature_names,
     read_metadata,
     create_vectorized_features,
     optimize_model,
@@ -23,6 +25,8 @@ from .model import (
     train_model,
     train_ovr_model,
     vectorize_subset,
+    write_subset_parquet,
+    write_feature_names,
 )
 from .download import (
     download_dataset,
@@ -43,6 +47,8 @@ __all__ = [
     "AuthenticodeSignature",
     "SectionInfo",
     "StringExtractor",
+    "create_parquet_features",
+    "get_feature_names",
     "read_metadata",
     "create_vectorized_features",
     "optimize_model",
@@ -51,6 +57,8 @@ __all__ = [
     "read_vectorized_features",
     "train_model",
     "vectorize_subset",
+    "write_subset_parquet",
+    "write_feature_names",
     "download_dataset",
     "download_models",
 ]

@@ -106,6 +106,20 @@ import thrember
 thrember.create_vectorized_features('/path/to/dataset/')
 ```
 
+Vectorization also writes `/path/to/dataset/feature_names.json`, which contains the full ordered list of feature names matching the columns in the generated `X_*.dat` files. You can also get the same list directly:
+
+```
+feature_names = thrember.get_feature_names()
+```
+
+To write named feature vectors and metadata together as parquet files, set `create_parquet=True`:
+
+```
+thrember.create_vectorized_features('/path/to/dataset/', create_parquet=True)
+```
+
+This writes `/path/to/dataset/train.parquet`, `/path/to/dataset/test.parquet`, and `/path/to/dataset/challenge.parquet`. Each parquet file contains metadata columns first, followed by one column per feature using the names from `feature_names.json`.
+
 Families and tags were assigned to files using [ClarAVy](https://github.com/FutureComputing4AI/ClarAVy/). If you want to train a classifier on other types of labels or tags, pass the label_type keyword to the create_vectorized_features() function:
 
 ```
@@ -132,6 +146,22 @@ import thrember
 X_train, y_train = thrember.read_vectorized_features('/path/to/dataset/', subset="train")
 X_test, y_test = thrember.read_vectorized_features('/path/to/dataset/', subset="test")
 X_challenge, y_challenge = thrember.read_vectorized_features('/path/to/dataset/', subset="challenge")
+```
+
+## Reading Metadata
+
+To extract dataset metadata, including `sha`, `sha256`, `timestamp`, and `subset`, run:
+
+```
+train_df, test_df, challenge_df = thrember.read_metadata('/path/to/dataset/')
+```
+
+This writes `/path/to/dataset/metadata.parquet` and returns the three subset dataframes.
+
+You can also create only the subset parquet files from raw JSONL files or existing `X_*.dat` files:
+
+```
+parquet_paths = thrember.create_parquet_features('/path/to/dataset/')
 ```
 
 ## More Examples
